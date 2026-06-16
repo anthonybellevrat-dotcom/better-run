@@ -16,8 +16,8 @@
     --green:#3db88a;--green-light:#0d2b22;--green-border:#1f6b4e;
     --red:#e05c5c;--red-border:#7a2a2a;
     --bg:#1c1c24;--bg2:#13131a;--bg3:#2a2a36;
-    --text:#e5e5ea;--text2:#8e8e99;--text3:#48484f;
-    --border:#2e2e3a;--border2:#232330;
+    --text:#e5e5ea;--text2:#8e8e99;--text3:#3a3a45;
+    --border:#2e2e3a;--border2:#1e1e28;
     --radius:10px;--radius-sm:8px;--radius-lg:14px;--radius-xl:20px;
   }
 
@@ -57,11 +57,11 @@
   .empty{text-align:center;color:var(--text2);font-size:14px;padding:32px 0}
 
   /* FAB */
-  .fab{position:fixed;bottom:calc(24px + env(safe-area-inset-bottom));right:20px;width:54px;height:54px;border-radius:50%;background:var(--primary);color:#fff;border:none;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:50;box-shadow:0 4px 20px rgba(123,114,233,.4)}
+  .fab{position:fixed;bottom:calc(24px + env(safe-area-inset-bottom));right:20px;width:54px;height:54px;border-radius:50%;background:var(--primary);color:#fff;border:none;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:50;box-shadow:0 4px 16px rgba(123,114,233,.4)}
   .fab:active{transform:scale(.96)}
 
   /* MODAL */
-  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:100;display:flex;align-items:flex-end;justify-content:center}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;display:flex;align-items:flex-end;justify-content:center}
   .modal{background:var(--bg);border-radius:var(--radius-xl) var(--radius-xl) 0 0;padding:20px 18px;padding-bottom:calc(28px + env(safe-area-inset-bottom));width:100%;max-width:480px;max-height:92vh;overflow-y:auto}
   .modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px}
   .modal h2{font-size:18px;font-weight:600;margin-bottom:14px}
@@ -90,7 +90,7 @@
   .exp-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
   .exp-table th{text-align:left;color:var(--text2);font-weight:500;padding:4px;border-bottom:0.5px solid var(--border2);font-size:11px;text-transform:uppercase;letter-spacing:.3px}
   .exp-table td{padding:3px 3px;vertical-align:middle}
-  .exp-table td input,.exp-table td select{font-size:12px;padding:5px 6px;border-radius:6px;border:0.5px solid var(--border);background:var(--bg);color:var(--text);width:100%;-webkit-appearance:none;appearance:none}
+  .exp-table td input,.exp-table td select{font-size:12px;padding:5px 6px;border-radius:6px;border:0.5px solid var(--border);background:var(--bg);color:var(--text);width:100%;-webkit-appearance:none;appearance:none;color-scheme:dark}
   .exp-table tfoot td{padding-top:8px;border-top:0.5px solid var(--border);font-weight:600;font-size:13px}
   .total-ttc{color:var(--text)}
   .total-tva{color:var(--primary)}
@@ -109,7 +109,7 @@
   .btn-cancel{padding:12px 18px;background:none;border:0.5px solid var(--border);border-radius:var(--radius-sm);font-size:15px;cursor:pointer;color:var(--text2)}
   .btn-pdf{padding:12px;background:none;border:0.5px solid var(--primary-border);color:var(--primary);border-radius:var(--radius-sm);font-size:13px;cursor:pointer;font-weight:500;display:flex;align-items:center;gap:5px}
   .btn-delete{width:100%;padding:12px;background:none;border:0.5px solid var(--red-border);color:var(--red);border-radius:var(--radius-sm);font-size:14px;cursor:pointer;margin-top:10px;font-weight:500}
-  .btn-delete:active{background:#fff0f0}
+  .btn-delete:active{background:#2a1010}
 
   /* PHOTO MODAL */
   .photo-modal-inner{background:var(--bg);border-radius:var(--radius-xl) var(--radius-xl) 0 0;padding:20px 18px;padding-bottom:calc(28px + env(safe-area-inset-bottom));width:100%;max-width:480px}
@@ -620,7 +620,7 @@ function exportPDF() {
   var fap = document.getElementById('f-facto-addr-prod').value||'';
 
   var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + esc(name) + '</title>'
-    + '<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;color:#e5e5ea;background:#0f0f14;min-height:100vh;padding-bottom:env(safe-area-inset-bottom)}'
+    + '<style>body{font-family:Arial,sans-serif;padding:36px;color:#222;max-width:620px;margin:0 auto}'
     + 'h1{font-size:24px;color:#534AB7;letter-spacing:3px;margin-bottom:6px}'
     + 'h2{font-size:17px;margin:0 0 4px;font-weight:600}'
     + '.meta{color:#666;font-size:13px;margin-bottom:3px}'
@@ -680,3 +680,4 @@ renderCal();
 </script>
 </body>
 </html>
+
