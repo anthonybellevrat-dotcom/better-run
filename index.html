@@ -569,33 +569,188 @@ function deleteMission() {
 }
 
 function exportPDF() {
-  var name=document.getElementById('f-name').value||'Run';
-  var employer=document.getElementById('f-employer').value||'';
-  var reg=document.getElementById('f-regisseur').value||'';
-  var date=document.getElementById('f-date').value||'';
-  var p=date.split('-');
-  var dl=p.length===3?parseInt(p[2])+'/'+parseInt(p[1])+'/'+p[0]:date;
-  var fnc=document.getElementById('f-facto-name-catering').value||'';
-  var fac=document.getElementById('f-facto-addr-catering').value||'';
-  var fnp=document.getElementById('f-facto-name-prod').value||'';
-  var fap=document.getElementById('f-facto-addr-prod').value||'';
-  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+esc(name)+'</title>'
-    +'<style>body{font-family:Arial,sans-serif;padding:36px;color:#222;max-width:620px;margin:0 auto}'
-    +'h1{font-size:24px;color:#534AB7;letter-spacing:3px;margin-bottom:6px}'
-    +'h2{font-size:17px;margin:0 0 4px;font-weight:600}.meta{color:#666;font-size:13px;margin-bottom:3px}'
-    +'.section{margin-top:20px;padding-top:14px;border-top:1px solid #e5e5ea}'
-    +'.section h3{font-size:13px;font-weight:700;color:#534AB7;text-transform:uppercase;margin-bottom:8px}'
-    +'.addr{font-size:13px;color:#444;white-space:pre-wrap;margin-top:4px}</style></head><body>'
-    +'<h1>BETTER RUN</h1><h2>'+esc(name)+'</h2>'
-    +'<p class="meta">'+esc(employer)+(employer&&dl?' — ':'')+dl+'</p>'
-    +(reg?'<p class="meta">Régisseur : '+esc(reg)+'</p>':'');
-  if(fnc||fac) html+='<div class="section"><h3>Facturation Catering</h3>'+(fnc?'<p class="meta"><strong>'+esc(fnc)+'</strong></p>':'')+(fac?'<p class="addr">'+esc(fac)+'</p>':'')+'</div>';
-  if(fnp||fap) html+='<div class="section"><h3>Facturation Prod</h3>'+(fnp?'<p class="meta"><strong>'+esc(fnp)+'</strong></p>':'')+(fap?'<p class="addr">'+esc(fap)+'</p>':'')+'</div>';
-  html+='</body></html>';
-  var blob=new Blob([html],{type:'text/html'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');a.href=url;a.download=name.replace(/\s+/g,'_')+'_BetterRun.html';a.click();
-  URL.revokeObjectURL(url);
+  var name = document.getElementById('f-name').value || 'Run';
+  var employer = document.getElementById('f-employer').value || '';
+  var reg = document.getElementById('f-regisseur').value || '';
+  var date = document.getElementById('f-date').value || '';
+  var p = date.split('-');
+  var dl = p.length===3 ? parseInt(p[2])+'/'+parseInt(p[1])+'/'+p[0] : date;
+  var tab = currentTab;
+  var fnName = document.getElementById('f-facto-name-'+tab).value || '';
+  var fnAddr = document.getElementById('f-facto-addr-'+tab).value || '';
+  var expenses = getExpenses(tab);
+  var tabLabel = tab === 'catering' ? 'Catering' : 'Prod';
+
+  // Load jsPDF dynamically then generate
+  if (!window.jspdf) {
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload = function() {
+      window.jspdf = window.jspdf || window.jsPDF;
+      doExportPDF(name, employer, reg, dl, tab, tabLabel, fnName, fnAddr, expenses);
+    };
+    document.head.appendChild(s);
+  } else {
+    doExportPDF(name, employer, reg, dl, tab, tabLabel, fnName, fnAddr, expenses);
+  }
+}
+
+function doExportPDF(name, employer, reg, dl, tab, tabLabel, fnName, fnAddr, expenses) {
+  var jsPDF = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
+  var doc = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+  var W = 210; // A4 width mm
+  var margin = 14;
+  var y = 20;
+  var col = [0x53/255, 0x4A/255, 0xB7/255]; // #534AB7
+
+  // Header
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(20);
+  doc.setTextColor(col[0]*255, col[1]*255, col[2]*255);
+  doc.text('BETTER RUN', margin, y);
+  y += 8;
+
+  doc.setFontSize(13);
+  doc.setTextColor(30,30,30);
+  doc.text(name, margin, y);
+  y += 6;
+
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(10);
+  doc.setTextColor(100,100,100);
+  if (employer) { doc.text(employer + (dl ? '  —  ' + dl : ''), margin, y); y += 5; }
+  else if (dl)  { doc.text(dl, margin, y); y += 5; }
+  if (reg)      { doc.text('Régisseur : ' + reg, margin, y); y += 5; }
+
+  // Facturation box
+  if (fnName || fnAddr) {
+    y += 3;
+    doc.setDrawColor(180,180,180);
+    doc.setFillColor(245,245,250);
+    var boxLines = fnAddr ? fnAddr.split('\n').length : 0;
+    var boxH = 7 + (fnName?5:0) + boxLines*4 + 3;
+    doc.roundedRect(margin, y, W-margin*2, boxH, 2, 2, 'FD');
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(8);
+    doc.setTextColor(col[0]*255, col[1]*255, col[2]*255);
+    doc.text('FACTURATION ' + tabLabel.toUpperCase(), margin+3, y+5);
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(30,30,30);
+    var ty = y+10;
+    if (fnName) { doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.text(fnName, margin+3, ty); ty+=5; }
+    if (fnAddr) {
+      doc.setFont('helvetica','normal'); doc.setFontSize(9);
+      fnAddr.split('\n').forEach(function(l){ doc.text(l, margin+3, ty); ty+=4; });
+    }
+    y += boxH + 5;
+  }
+
+  // Table title
+  y += 2;
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(10);
+  doc.setTextColor(col[0]*255, col[1]*255, col[2]*255);
+  doc.text('DÉPENSES — ' + tabLabel.toUpperCase(), margin, y);
+  y += 5;
+
+  // Table header
+  var colW = [70, 35, 35, 30]; // Établissement, TTC, TVA, Ticket
+  var headers = ['Établissement', 'TTC (€)', 'TVA (€)', 'Ticket'];
+  doc.setFillColor(col[0]*255, col[1]*255, col[2]*255);
+  doc.rect(margin, y, W-margin*2, 7, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(9);
+  var cx = margin+2;
+  headers.forEach(function(h, i) { doc.text(h, cx, y+5); cx += colW[i]; });
+  y += 7;
+
+  // Table rows
+  var photos = []; // collect photos for annex
+  var totalTTC = 0, totalTVA = 0;
+  expenses.forEach(function(e, idx) {
+    var rowH = 7;
+    var bg = idx % 2 === 0 ? [250,250,252] : [240,240,246];
+    doc.setFillColor(bg[0],bg[1],bg[2]);
+    doc.rect(margin, y, W-margin*2, rowH, 'F');
+    doc.setDrawColor(210,210,220);
+    doc.line(margin, y+rowH, W-margin, y+rowH);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9);
+    doc.setTextColor(30,30,30);
+    var cx2 = margin+2;
+    doc.text(e.etab||'', cx2, y+5); cx2+=colW[0];
+    var ttc = parseFloat(e.ttc||0)||0;
+    var tva = parseFloat(e.tva||0)||0;
+    totalTTC += ttc; totalTVA += tva;
+    doc.text(ttc.toFixed(2).replace('.',','), cx2, y+5); cx2+=colW[1];
+    doc.setTextColor(col[0]*255, col[1]*255, col[2]*255);
+    doc.text(tva.toFixed(2).replace('.',','), cx2, y+5); cx2+=colW[2];
+    doc.setTextColor(30,30,30);
+    if (e.photo) {
+      photos.push({num: idx+1, etab: e.etab, data: e.photo});
+      doc.setTextColor(col[0]*255, col[1]*255, col[2]*255);
+      doc.text('Annexe '+(photos.length), cx2, y+5);
+      doc.setTextColor(30,30,30);
+    } else {
+      doc.text('—', cx2, y+5);
+    }
+    y += rowH;
+    if (y > 260) { doc.addPage(); y = 20; }
+  });
+
+  // Total row
+  doc.setFillColor(col[0]*255, col[1]*255, col[2]*255);
+  doc.rect(margin, y, W-margin*2, 8, 'F');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(9);
+  doc.setTextColor(255,255,255);
+  doc.text('TOTAL', margin+2, y+5.5);
+  doc.text(totalTTC.toFixed(2).replace('.',','), margin+2+colW[0], y+5.5);
+  doc.setTextColor(220,220,255);
+  doc.text(totalTVA.toFixed(2).replace('.',','), margin+2+colW[0]+colW[1], y+5.5);
+  y += 12;
+
+  // ANNEXES — photos
+  if (photos.length > 0) {
+    doc.addPage();
+    y = 20;
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(13);
+    doc.setTextColor(col[0]*255, col[1]*255, col[2]*255);
+    doc.text('ANNEXES — TICKETS DE CAISSE', margin, y);
+    y += 10;
+
+    photos.forEach(function(ph) {
+      // Check if we need a new page
+      if (y + 80 > 280) { doc.addPage(); y = 20; }
+
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(10);
+      doc.setTextColor(30,30,30);
+      doc.text('Annexe ' + ph.num + ' — ' + (ph.etab||''), margin, y);
+      y += 4;
+
+      try {
+        // Detect image type from base64
+        var imgType = 'JPEG';
+        if (ph.data.indexOf('data:image/png') === 0) imgType = 'PNG';
+        // Max width 100mm, max height 70mm
+        var imgW = 100, imgH = 70;
+        doc.addImage(ph.data, imgType, margin, y, imgW, imgH, '', 'FAST');
+        y += imgH + 10;
+      } catch(err) {
+        doc.setFont('helvetica','normal');
+        doc.setFontSize(9);
+        doc.setTextColor(150,150,150);
+        doc.text('[Image non disponible]', margin, y+5);
+        y += 15;
+      }
+    });
+  }
+
+  // Save
+  doc.save(name.replace(/\s+/g,'_') + '_BetterRun.pdf');
 }
 
 function openEtabModal() { renderEtabList(); document.getElementById('modal-etab').style.display='flex'; }
