@@ -270,10 +270,17 @@ onSnapshot(collection(db, 'missions'), function(snap) {
   });
   window.missions.sort(function(a,b){ return (a.date||'').localeCompare(b.date||''); });
   document.getElementById('sync-bar').style.display = 'none';
-  window.renderCal();
-  if (window.selectedDate) window.renderDayMissions(window.selectedDate);
-  var ls = document.getElementById('screen-list');
-  if (ls && ls.classList.contains('active')) window.renderAllMissions();
+  function applyUpdate() {
+    if (typeof window.renderCal === 'function') {
+      window.renderCal();
+      if (window.selectedDate) window.renderDayMissions(window.selectedDate);
+      var ls = document.getElementById('screen-list');
+      if (ls && ls.classList.contains('active')) window.renderAllMissions();
+    } else {
+      setTimeout(applyUpdate, 100);
+    }
+  }
+  applyUpdate();
 });
 
 onSnapshot(collection(db, 'config'), function(snap) {
@@ -615,7 +622,7 @@ function saveMission() {
     document.getElementById('sync-bar').textContent='Synchronisation...';
     closeModal();
   }).catch(function(err){
-    alert('Erreur lors de l'envoi des photos : '+err.message);
+    alert("Erreur lors de l'envoi des photos : "+err.message);
     document.getElementById('sync-bar').style.display='none';
   });
 }
