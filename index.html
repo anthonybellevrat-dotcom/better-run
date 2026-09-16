@@ -568,20 +568,56 @@ function saveMission() {
   if(fnp&&fap) window.factoBook[fnp]=fap;
   var existing=editIndex>=0?window.missions[editIndex]:null;
   var fireId=(existing&&existing._id)?existing._id:('mission_'+Date.now());
-  var m={
-    name:name,
-    employer:document.getElementById('f-employer').value.trim(),
-    regisseur:document.getElementById('f-regisseur').value.trim(),
-    date:date, tab:currentTab,
-    facto_name_catering:fnc, facto_addr_catering:fac,
-    facto_name_prod:fnp, facto_addr_prod:fap,
-    expenses_catering:getExpenses('catering'),
-    expenses_prod:getExpenses('prod'),
-    notes:document.getElementById('f-notes').value
-  };
-  saveToFirebase(m, fireId);
-  saveConfig();
-  closeModal();
+
+  // Collect expenses from both tabs, uploading any local photos first
+  var expCat = getExpenses('catering');
+  var expProd = getExpenses('prod');
+  var allRows = [];
+  document.getElementById('rows-catering').querySelectorAll('tr').forEach(function(r){
+    if(r.getAttribute('data-photo-local')==='1') allRows.push({row:r, tab:'catering'});
+  });
+  document.getElementById('rows-prod').querySelectorAll('tr').forEach(function(r){
+    if(r.getAttribute('data-photo-local')==='1') allRows.push({row:r, tab:'prod'});
+  });
+
+  document.getElementById('sync-bar').style.display='block';
+  document.getElementById('sync-bar').textContent='Envoi des photos...';
+
+  // Upload all local photos then save
+  var uploads = allRows.map(function(item){
+    var dataUrl = item.row.getAttribute('data-photo');
+    var photoPath = 'photos/'+fireId+'/'+item.row.id+'_'+Date.now()+'.jpg';
+    item.row.setAttribute('data-photo-path', photoPath);
+    if(!window.fbUploadPhoto) return Promise.resolve();
+    return window.fbUploadPhoto(photoPath, dataUrl).then(function(url){
+      item.row.setAttribute('data-photo', url);
+      item.row.setAttribute('data-photo-local', '0');
+    });
+  });
+
+  Promise.all(uploads).then(function(){
+    // Re-collect expenses after upload (URLs now updated)
+    var expCatFinal = getExpenses('catering');
+    var expProdFinal = getExpenses('prod');
+    var m={
+      name:name,
+      employer:document.getElementById('f-employer').value.trim(),
+      regisseur:document.getElementById('f-regisseur').value.trim(),
+      date:date, tab:currentTab,
+      facto_name_catering:fnc, facto_addr_catering:fac,
+      facto_name_prod:fnp, facto_addr_prod:fap,
+      expenses_catering:expCatFinal,
+      expenses_prod:expProdFinal,
+      notes:document.getElementById('f-notes').value
+    };
+    saveToFirebase(m, fireId);
+    saveConfig();
+    document.getElementById('sync-bar').textContent='Synchronisation...';
+    closeModal();
+  }).catch(function(err){
+    alert('Erreur lors de l'envoi des photos : '+err.message);
+    document.getElementById('sync-bar').style.display='none';
+  });
 }
 
 function deleteMission() {
