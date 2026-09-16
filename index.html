@@ -230,6 +230,7 @@ textarea.form-input{resize:vertical;min-height:64px;line-height:1.4}
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBCvAqKlrRJhSIoaIE4rinZ88V3hdwcLr8",
@@ -242,10 +243,23 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 window.fbSave = function(id, data) { return setDoc(doc(db, 'missions', id), data); };
 window.fbDel = function(id) { return deleteDoc(doc(db, 'missions', id)); };
 window.fbSaveCfg = function(id, data) { return setDoc(doc(db, 'config', id), data); };
+
+// Upload photo to Firebase Storage, returns download URL
+window.fbUploadPhoto = async function(path, dataUrl) {
+  var storageRef = ref(storage, path);
+  await uploadString(storageRef, dataUrl, 'data_url');
+  return await getDownloadURL(storageRef);
+};
+
+// Delete photo from Firebase Storage
+window.fbDeletePhoto = async function(path) {
+  try { await deleteObject(ref(storage, path)); } catch(e) {}
+};
 
 onSnapshot(collection(db, 'missions'), function(snap) {
   window.missions = [];
@@ -377,6 +391,7 @@ window.renderAllMissions = function renderAllMissions() {
 
 function openNewMission() {
   editIndex = -1;
+  window.currentEditFireId = null;
   document.getElementById('modal-title').textContent = 'Nouveau run';
   ['f-name','f-employer','f-regisseur','f-notes','f-facto-name-catering','f-facto-addr-catering','f-facto-name-prod','f-facto-addr-prod']
     .forEach(function(id){ document.getElementById(id).value=''; });
@@ -393,6 +408,7 @@ function openNewMission() {
 
 function openEditMission(idx) {
   editIndex = idx; var m = window.missions[idx];
+  window.currentEditFireId = m._id || null;
   document.getElementById('modal-title').textContent = 'Modifier le run';
   document.getElementById('f-name').value = m.name||'';
   document.getElementById('f-employer').value = m.employer||'';
@@ -463,6 +479,7 @@ function addRowData(tab, data) {
   var id = 'row-'+tab+'-'+(rowCounters[tab]++);
   var tr = document.createElement('tr'); tr.id=id;
   tr.setAttribute('data-photo', data.photo||'');
+  tr.setAttribute('data-photo-path', data.photoPath||'');
   var rid=id, rtab=tab;
   var photoCell = data.photo
     ? '<img src="'+data.photo+'" class="ticket-thumb" onclick="viewPhoto(\''+rid+'\',\''+rtab+'\')" alt="ticket">'
@@ -528,7 +545,13 @@ function getExpenses(tab) {
   return Array.from(document.getElementById('rows-'+tab).querySelectorAll('tr')).map(function(r){
     var sel=r.querySelector('select');
     var ins=r.querySelectorAll('input[type=number]');
-    return {etab:sel?sel.value:'',ttc:ins[0]?ins[0].value:'',tva:ins[1]?ins[1].value:'',photo:r.getAttribute('data-photo')||''};
+    return {
+      etab:sel?sel.value:'',
+      ttc:ins[0]?ins[0].value:'',
+      tva:ins[1]?ins[1].value:'',
+      photo:r.getAttribute('data-photo')||'',
+      photoPath:r.getAttribute('data-photo-path')||''
+    };
   });
 }
 
