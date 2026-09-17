@@ -143,6 +143,8 @@ textarea.form-input{resize:vertical;min-height:64px;line-height:1.4}
   <input id="f-employer" class="form-input" type="text" placeholder="ex: Live Nation">
   <label class="form-label">Régisseur</label>
   <input id="f-regisseur" class="form-input" type="text" placeholder="ex: Jean Dupont">
+  <label class="form-label">Runner</label>
+  <input id="f-runner" class="form-input" type="text" placeholder="ex: Anthony Bellevrat">
   <label class="form-label">Date</label>
   <input id="f-date" class="form-input" type="date">
   <div class="tab-row">
@@ -190,6 +192,8 @@ textarea.form-input{resize:vertical;min-height:64px;line-height:1.4}
   <hr class="divider">
   <label class="form-label">Remarques</label>
   <textarea id="f-notes" class="form-input" placeholder="Notes libres..."></textarea>
+  <label class="form-label">RIB (pour remboursement)</label>
+  <textarea id="f-rib" class="form-input" placeholder="Banque, IBAN, BIC..." style="min-height:50px"></textarea>
   <div class="btn-row">
     <button class="btn-cancel" onclick="closeModal()">Annuler</button>
     <button class="btn-pdf" id="btn-pdf-modal" onclick="exportPDF()" style="display:none">PDF</button>
@@ -385,6 +389,7 @@ window.renderDayMissions = function renderDayMissions(ds) {
 function missionCardHTML(m, idx) {
   var badge = m.tab==='catering' ? '<span class="badge badge-cat">Catering</span>' : '<span class="badge badge-prod">Prod</span>';
   var reg = m.regisseur ? ' <span style="color:var(--text3)">· '+esc(m.regisseur)+'</span>' : '';
+  var runner = m.runner ? ' <span style="color:var(--text3)">· '+esc(m.runner)+'</span>' : '';
   return '<div class="card" onclick="openEditMission('+idx+')">'
     +'<div class="card-name">'+esc(m.name)+'</div>'
     +'<div class="card-meta">'+esc(m.employer)+reg+'</div>'+badge+'</div>';
@@ -400,9 +405,13 @@ function openNewMission() {
   editIndex = -1;
   window.currentEditFireId = null;
   document.getElementById('modal-title').textContent = 'Nouveau run';
-  ['f-name','f-employer','f-regisseur','f-notes','f-facto-name-catering','f-facto-addr-catering','f-facto-name-prod','f-facto-addr-prod']
+  ['f-name','f-employer','f-regisseur','f-runner','f-notes','f-rib','f-facto-name-catering','f-facto-addr-catering','f-facto-name-prod','f-facto-addr-prod']
     .forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('f-runner').value = 'Anthony Bellevrat';
+  // Pre-fill RIB from last saved mission
+  var lastRib = window.missions.length ? (window.missions[window.missions.length-1].rib||'') : '';
+  document.getElementById('f-rib').value = lastRib;
   document.getElementById('btn-delete').style.display = 'none';
   document.getElementById('btn-pdf-modal').style.display = 'none';
   rowCounters = {catering:0, prod:0};
@@ -420,6 +429,8 @@ function openEditMission(idx) {
   document.getElementById('f-name').value = m.name||'';
   document.getElementById('f-employer').value = m.employer||'';
   document.getElementById('f-regisseur').value = m.regisseur||'';
+  document.getElementById('f-runner').value = m.runner||'Anthony Bellevrat';
+  document.getElementById('f-rib').value = m.rib||'';
   document.getElementById('f-date').value = m.date||'';
   document.getElementById('f-notes').value = m.notes||'';
   document.getElementById('f-facto-name-catering').value = m.facto_name_catering||'';
@@ -583,6 +594,8 @@ function saveMission() {
     name:name,
     employer:document.getElementById('f-employer').value.trim(),
     regisseur:document.getElementById('f-regisseur').value.trim(),
+    runner:document.getElementById('f-runner').value.trim(),
+    rib:document.getElementById('f-rib').value.trim(),
     date:date, tab:currentTab,
     facto_name_catering:fnc, facto_addr_catering:fac,
     facto_name_prod:fnp, facto_addr_prod:fap,
@@ -719,6 +732,9 @@ function doExportPDF(name, employer, reg, dl, tab, tabLabel, fnName, fnAddr, exp
   if (employer) { doc.text(employer + (dl ? '  —  ' + dl : ''), margin, y); y += 5; }
   else if (dl)  { doc.text(dl, margin, y); y += 5; }
   if (reg)      { doc.text('Régisseur : ' + reg, margin, y); y += 5; }
+  var runner = document.getElementById('f-runner').value||'';
+  if (runner)   { doc.text('Runner : ' + runner, margin, y); y += 5; }
+  var rib = document.getElementById('f-rib').value||'';
 
   // Facturation box
   if (fnName || fnAddr) {
@@ -808,6 +824,27 @@ function doExportPDF(name, employer, reg, dl, tab, tabLabel, fnName, fnAddr, exp
   doc.setTextColor(220,220,255);
   doc.text(totalTVA.toFixed(2).replace('.',','), margin+2+colW[0]+colW[1], y+5.5);
   y += 12;
+
+  // RIB section
+  if (rib) {
+    y += 4;
+    doc.setFillColor(245,245,250);
+    doc.setDrawColor(180,180,180);
+    var ribLines = rib.split('\n');
+    var ribH = 8 + ribLines.length * 4 + 4;
+    if (y + ribH > 270) { doc.addPage(); y = 20; }
+    doc.roundedRect(margin, y, W-margin*2, ribH, 2, 2, 'FD');
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(8);
+    doc.setTextColor(col[0]*255, col[1]*255, col[2]*255);
+    doc.text('RIB — REMBOURSEMENT DES FRAIS', margin+3, y+5);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9);
+    doc.setTextColor(30,30,30);
+    var ry = y+10;
+    ribLines.forEach(function(l){ doc.text(l, margin+3, ry); ry+=4; });
+    y += ribH + 6;
+  }
 
   // ANNEXES — photos
   if (photos.length > 0) {
