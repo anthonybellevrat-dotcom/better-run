@@ -638,6 +638,25 @@ function deleteMission() {
   closeModal();
 }
 
+// Convert a URL (Firebase Storage) to base64 via canvas
+function urlToBase64(url) {
+  return new Promise(function(resolve) {
+    if (!url || url.startsWith('data:')) { resolve(url); return; }
+    var img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = function() {
+      var canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/jpeg', 0.8));
+    };
+    img.onerror = function() { resolve(null); };
+    img.src = url;
+  });
+}
+
 function exportPDF() {
   var name = document.getElementById('f-name').value || 'Run';
   var employer = document.getElementById('f-employer').value || '';
@@ -651,18 +670,27 @@ function exportPDF() {
   var expenses = getExpenses(tab);
   var tabLabel = tab === 'catering' ? 'Catering' : 'Prod';
 
-  // Load jsPDF dynamically then generate
-  if (!window.jspdf) {
-    var s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-    s.onload = function() {
-      window.jspdf = window.jspdf || window.jsPDF;
+  // Pre-convert all Firebase Storage URLs to base64
+  var photoPromises = expenses.map(function(e) {
+    if (e.photo && !e.photo.startsWith('data:')) {
+      return urlToBase64(e.photo).then(function(b64) { e.photo = b64; });
+    }
+    return Promise.resolve();
+  });
+
+  Promise.all(photoPromises).then(function() {
+    if (!window.jspdf) {
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s.onload = function() {
+        window.jspdf = window.jspdf || window.jsPDF;
+        doExportPDF(name, employer, reg, dl, tab, tabLabel, fnName, fnAddr, expenses);
+      };
+      document.head.appendChild(s);
+    } else {
       doExportPDF(name, employer, reg, dl, tab, tabLabel, fnName, fnAddr, expenses);
-    };
-    document.head.appendChild(s);
-  } else {
-    doExportPDF(name, employer, reg, dl, tab, tabLabel, fnName, fnAddr, expenses);
-  }
+    }
+  });
 }
 
 function doExportPDF(name, employer, reg, dl, tab, tabLabel, fnName, fnAddr, expenses) {
@@ -801,14 +829,21 @@ function doExportPDF(name, employer, reg, dl, tab, tabLabel, fnName, fnAddr, exp
       doc.text('Annexe ' + ph.num + ' — ' + (ph.etab||''), margin, y);
       y += 4;
 
+      // photo is a Firebase URL - already converted to base64 before calling this
       try {
-        // Detect image type from base64
         var imgType = 'JPEG';
-        if (ph.data.indexOf('data:image/png') === 0) imgType = 'PNG';
-        // Max width 100mm, max height 70mm
-        var imgW = 100, imgH = 70;
-        doc.addImage(ph.data, imgType, margin, y, imgW, imgH, '', 'FAST');
-        y += imgH + 10;
+        if (ph.data && ph.data.indexOf('data:image/png') === 0) imgType = 'PNG';
+        if (ph.data && ph.data.startsWith('data:')) {
+          var imgW = 100, imgH = 70;
+          doc.addImage(ph.data, imgType, margin, y, imgW, imgH, '', 'FAST');
+          y += imgH + 10;
+        } else {
+          doc.setFont('helvetica','normal');
+          doc.setFontSize(9);
+          doc.setTextColor(150,150,150);
+          doc.text('[Photo non disponible - URL externe]', margin, y+5);
+          y += 15;
+        }
       } catch(err) {
         doc.setFont('helvetica','normal');
         doc.setFontSize(9);
