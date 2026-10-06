@@ -162,9 +162,9 @@ textarea.form-input{resize:vertical;min-height:64px;line-height:1.4}
       <textarea id="f-facto-addr-catering" class="form-input" placeholder="Adresse complète..."></textarea>
     </div>
     <table class="exp-table">
-      <thead><tr><th style="width:30%">Établissement</th><th style="width:20%">TTC</th><th style="width:18%">TVA</th><th style="width:22%">Ticket</th><th style="width:10%"></th></tr></thead>
+      <thead><tr><th style="width:28%">Établissement</th><th style="width:16%">TTC</th><th style="width:14%">TVA</th><th style="width:14%">HT</th><th style="width:18%">Ticket</th><th style="width:10%"></th></tr></thead>
       <tbody id="rows-catering"></tbody>
-      <tfoot><tr><td style="color:var(--text2);font-size:12px">Total</td><td id="total-ttc-catering" class="total-ttc">0,00 €</td><td id="total-tva-catering" class="total-tva">0,00 €</td><td colspan="2"></td></tr></tfoot>
+      <tfoot><tr><td style="color:var(--text2);font-size:12px">Total</td><td id="total-ttc-catering" class="total-ttc">0,00 €</td><td id="total-tva-catering" class="total-tva">0,00 €</td><td id="total-ht-catering" style="color:#3db88a">0,00 €</td><td colspan="2"></td></tr></tfoot>
     </table>
     <button class="btn-add-row" onclick="addRow('catering')">
       <svg class="ico" width="14" height="14" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Ajouter une dépense
@@ -181,9 +181,9 @@ textarea.form-input{resize:vertical;min-height:64px;line-height:1.4}
       <textarea id="f-facto-addr-prod" class="form-input" placeholder="Adresse complète..."></textarea>
     </div>
     <table class="exp-table">
-      <thead><tr><th style="width:30%">Établissement</th><th style="width:20%">TTC</th><th style="width:18%">TVA</th><th style="width:22%">Ticket</th><th style="width:10%"></th></tr></thead>
+      <thead><tr><th style="width:28%">Établissement</th><th style="width:16%">TTC</th><th style="width:14%">TVA</th><th style="width:14%">HT</th><th style="width:18%">Ticket</th><th style="width:10%"></th></tr></thead>
       <tbody id="rows-prod"></tbody>
-      <tfoot><tr><td style="color:var(--text2);font-size:12px">Total</td><td id="total-ttc-prod" class="total-ttc">0,00 €</td><td id="total-tva-prod" class="total-tva">0,00 €</td><td colspan="2"></td></tr></tfoot>
+      <tfoot><tr><td style="color:var(--text2);font-size:12px">Total</td><td id="total-ttc-prod" class="total-ttc">0,00 €</td><td id="total-tva-prod" class="total-tva">0,00 €</td><td id="total-ht-prod" style="color:#3db88a">0,00 €</td><td colspan="2"></td></tr></tfoot>
     </table>
     <button class="btn-add-row" onclick="addRow('prod')">
       <svg class="ico" width="14" height="14" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Ajouter une dépense
@@ -517,14 +517,16 @@ function addRowData(tab, data) {
 function removeRow(id,tab) { var el=document.getElementById(id); if(el) el.remove(); updateTotals(tab); }
 
 function updateTotals(tab) {
-  var ttc=0, tva=0;
+  var ttc=0, tva=0, ht=0;
   document.getElementById('rows-'+tab).querySelectorAll('tr').forEach(function(r){
     var ins=r.querySelectorAll('input[type=number]');
     ttc+=parseFloat(ins[0]?ins[0].value:0)||0;
     tva+=parseFloat(ins[1]?ins[1].value:0)||0;
+    ht+=parseFloat(ins[2]?ins[2].value:0)||0;
   });
   document.getElementById('total-ttc-'+tab).textContent=fmt(ttc);
   document.getElementById('total-tva-'+tab).textContent=fmt(tva);
+  document.getElementById('total-ht-'+tab).textContent=fmt(ht);
 }
 
 function pickPhoto(rowId,tab) { currentPhotoRowId=rowId; currentPhotoTab=tab; document.getElementById('photo-file-input').click(); }
@@ -567,6 +569,7 @@ function getExpenses(tab) {
       etab:sel?sel.value:'',
       ttc:ins[0]?ins[0].value:'',
       tva:ins[1]?ins[1].value:'',
+      ht:ins[2]?ins[2].value:'',
       photo:r.getAttribute('data-photo')||'',
       photoPath:r.getAttribute('data-photo-path')||''
     };
@@ -717,14 +720,9 @@ function doExportPDF(name, employer, reg, dl, tab, tabLabel, fnName, fnAddr, exp
   // Header
   doc.setFont('helvetica','bold');
   doc.setFontSize(20);
-  doc.setTextColor(col[0]*255, col[1]*255, col[2]*255);
-  doc.text('BETTER RUN', margin, y);
-  y += 8;
-
-  doc.setFontSize(13);
   doc.setTextColor(30,30,30);
   doc.text(name, margin, y);
-  y += 6;
+  y += 8;
 
   doc.setFont('helvetica','normal');
   doc.setFontSize(10);
@@ -768,8 +766,8 @@ function doExportPDF(name, employer, reg, dl, tab, tabLabel, fnName, fnAddr, exp
   y += 5;
 
   // Table header
-  var colW = [70, 35, 35, 30]; // Établissement, TTC, TVA, Ticket
-  var headers = ['Établissement', 'TTC (€)', 'TVA (€)', 'Ticket'];
+  var colW = [60, 28, 28, 28, 26]; // Établissement, TTC, TVA, HT, Ticket
+  var headers = ['Établissement', 'TTC (€)', 'TVA (€)', 'HT (€)', 'Ticket'];
   doc.setFillColor(col[0]*255, col[1]*255, col[2]*255);
   doc.rect(margin, y, W-margin*2, 7, 'F');
   doc.setTextColor(255,255,255);
@@ -781,7 +779,7 @@ function doExportPDF(name, employer, reg, dl, tab, tabLabel, fnName, fnAddr, exp
 
   // Table rows
   var photos = []; // collect photos for annex
-  var totalTTC = 0, totalTVA = 0;
+  var totalTTC = 0, totalTVA = 0, totalHT = 0;
   expenses.forEach(function(e, idx) {
     var rowH = 7;
     var bg = idx % 2 === 0 ? [250,250,252] : [240,240,246];
@@ -796,10 +794,13 @@ function doExportPDF(name, employer, reg, dl, tab, tabLabel, fnName, fnAddr, exp
     doc.text(e.etab||'', cx2, y+5); cx2+=colW[0];
     var ttc = parseFloat(e.ttc||0)||0;
     var tva = parseFloat(e.tva||0)||0;
-    totalTTC += ttc; totalTVA += tva;
+    var ht = parseFloat(e.ht||0)||0;
+    totalTTC += ttc; totalTVA += tva; totalHT += ht;
     doc.text(ttc.toFixed(2).replace('.',','), cx2, y+5); cx2+=colW[1];
     doc.setTextColor(col[0]*255, col[1]*255, col[2]*255);
     doc.text(tva.toFixed(2).replace('.',','), cx2, y+5); cx2+=colW[2];
+    doc.setTextColor(80,180,130);
+    doc.text(ht.toFixed(2).replace('.',','), cx2, y+5); cx2+=colW[3];
     doc.setTextColor(30,30,30);
     if (e.photo) {
       photos.push({num: idx+1, etab: e.etab, data: e.photo});
@@ -821,8 +822,10 @@ function doExportPDF(name, employer, reg, dl, tab, tabLabel, fnName, fnAddr, exp
   doc.setTextColor(255,255,255);
   doc.text('TOTAL', margin+2, y+5.5);
   doc.text(totalTTC.toFixed(2).replace('.',','), margin+2+colW[0], y+5.5);
-  doc.setTextColor(220,220,255);
+  doc.setTextColor(200,220,255);
   doc.text(totalTVA.toFixed(2).replace('.',','), margin+2+colW[0]+colW[1], y+5.5);
+  doc.setTextColor(180,255,200);
+  doc.text(totalHT.toFixed(2).replace('.',','), margin+2+colW[0]+colW[1]+colW[2], y+5.5);
   y += 12;
 
   // RIB section
@@ -871,14 +874,25 @@ function doExportPDF(name, employer, reg, dl, tab, tabLabel, fnName, fnAddr, exp
         var imgType = 'JPEG';
         if (ph.data && ph.data.indexOf('data:image/png') === 0) imgType = 'PNG';
         if (ph.data && ph.data.startsWith('data:')) {
-          var imgW = 100, imgH = 70;
+          // Preserve original proportions - max width 170mm, max height 200mm
+          var tmpImg = new Image();
+          tmpImg.src = ph.data;
+          var natW = tmpImg.naturalWidth || 800;
+          var natH = tmpImg.naturalHeight || 600;
+          var maxW = W - margin*2; // 182mm
+          var maxH = 180;
+          var ratio = natW / natH;
+          var imgW = maxW;
+          var imgH = imgW / ratio;
+          if (imgH > maxH) { imgH = maxH; imgW = imgH * ratio; }
+          if (y + imgH > 280) { doc.addPage(); y = 20; }
           doc.addImage(ph.data, imgType, margin, y, imgW, imgH, '', 'FAST');
           y += imgH + 10;
         } else {
           doc.setFont('helvetica','normal');
           doc.setFontSize(9);
           doc.setTextColor(150,150,150);
-          doc.text('[Photo non disponible - URL externe]', margin, y+5);
+          doc.text('[Photo non disponible]', margin, y+5);
           y += 15;
         }
       } catch(err) {
