@@ -519,10 +519,9 @@ function removeRow(id,tab) { var el=document.getElementById(id); if(el) el.remov
 function updateTotals(tab) {
   var ttc=0, tva=0, ht=0;
   document.getElementById('rows-'+tab).querySelectorAll('tr').forEach(function(r){
-    var ins=r.querySelectorAll('input[type=number]');
-    ttc+=parseFloat(ins[0]?ins[0].value:0)||0;
-    tva+=parseFloat(ins[1]?ins[1].value:0)||0;
-    ht+=parseFloat(ins[2]?ins[2].value:0)||0;
+    ttc+=parseFloat((r.querySelector('input[name=ttc]')||{}).value||0)||0;
+    tva+=parseFloat((r.querySelector('input[name=tva]')||{}).value||0)||0;
+    ht+=parseFloat((r.querySelector('input[name=ht]')||{}).value||0)||0;
   });
   document.getElementById('total-ttc-'+tab).textContent=fmt(ttc);
   document.getElementById('total-tva-'+tab).textContent=fmt(tva);
@@ -563,13 +562,11 @@ function closePhotoModal() { document.getElementById('modal-photo').style.displa
 
 function getExpenses(tab) {
   return Array.from(document.getElementById('rows-'+tab).querySelectorAll('tr')).map(function(r){
-    var sel=r.querySelector('select');
-    var ins=r.querySelectorAll('input[type=number]');
     return {
-      etab:sel?sel.value:'',
-      ttc:ins[0]?ins[0].value:'',
-      tva:ins[1]?ins[1].value:'',
-      ht:ins[2]?ins[2].value:'',
+      etab:(r.querySelector('select[name=etab]')||{}).value||'',
+      ttc:(r.querySelector('input[name=ttc]')||{}).value||'',
+      tva:(r.querySelector('input[name=tva]')||{}).value||'',
+      ht:(r.querySelector('input[name=ht]')||{}).value||'',
       photo:r.getAttribute('data-photo')||'',
       photoPath:r.getAttribute('data-photo-path')||''
     };
@@ -796,6 +793,7 @@ function doExportPDF(name, employer, reg, dl, tab, tabLabel, fnName, fnAddr, exp
     var tva = parseFloat(e.tva||0)||0;
     var ht = parseFloat(e.ht||0)||0;
     totalTTC += ttc; totalTVA += tva; totalHT += ht;
+    doc.setTextColor(30,30,30);
     doc.text(ttc.toFixed(2).replace('.',','), cx2, y+5); cx2+=colW[1];
     doc.setTextColor(col[0]*255, col[1]*255, col[2]*255);
     doc.text(tva.toFixed(2).replace('.',','), cx2, y+5); cx2+=colW[2];
