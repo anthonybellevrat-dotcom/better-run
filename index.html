@@ -799,16 +799,14 @@ function doSharePDF(name,employer,reg,runner,rib,dl,tab,tabLabel,fnName,fnAddr,e
   if(runner){doc.text('Runner : '+runner,margin,y);y+=5;}
   if(fnName||fnAddr){
     y+=3;doc.setDrawColor(180,180,180);doc.setFillColor(245,245,250);
-    var boxLines=fnAddr?fnAddr.split('
-').length:0,boxH=7+(fnName?5:0)+boxLines*4+3;
+    var boxLines=fnAddr?fnAddr.split('\n').length:0,boxH=7+(fnName?5:0)+boxLines*4+3;
     doc.roundedRect(margin,y,W-margin*2,boxH,2,2,'FD');
     doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(col[0]*255,col[1]*255,col[2]*255);
     doc.text('FACTURATION '+tabLabel.toUpperCase(),margin+3,y+5);
     doc.setFont('helvetica','normal');doc.setTextColor(30,30,30);
     var ty=y+10;
     if(fnName){doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text(fnName,margin+3,ty);ty+=5;}
-    if(fnAddr){doc.setFont('helvetica','normal');doc.setFontSize(9);fnAddr.split('
-').forEach(function(l){doc.text(l,margin+3,ty);ty+=4;});}
+    if(fnAddr){doc.setFont('helvetica','normal');doc.setFontSize(9);fnAddr.split('\n').forEach(function(l){doc.text(l,margin+3,ty);ty+=4;});}
     y+=boxH+5;
   }
   y+=2;doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(col[0]*255,col[1]*255,col[2]*255);
@@ -844,8 +842,7 @@ function doSharePDF(name,employer,reg,runner,rib,dl,tab,tabLabel,fnName,fnAddr,e
   y+=12;
   if(rib){
     y+=4;doc.setFillColor(245,245,250);doc.setDrawColor(180,180,180);
-    var ribLines=rib.split('
-'),ribH=8+ribLines.length*4+4;
+    var ribLines=rib.split('\n'),ribH=8+ribLines.length*4+4;
     if(y+ribH>270){doc.addPage();y=20;}
     doc.roundedRect(margin,y,W-margin*2,ribH,2,2,'FD');
     doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(col[0]*255,col[1]*255,col[2]*255);
@@ -1048,9 +1045,6 @@ function renderEtabList(){
 function addEtab(){var v=document.getElementById('etab-new-input').value.trim();if(!v)return;if(!window.etabs.includes(v))window.etabs.push(v);saveConfig();document.getElementById('etab-new-input').value='';renderEtabList();}
 function removeEtab(i){window.etabs.splice(i,1);saveConfig();renderEtabList();}
 
-renderCal();
-checkNotifications();
-
 function checkNotifications() {
   if (!window.missions || !window.missions.length) return;
   var now = Date.now();
@@ -1077,6 +1071,8 @@ function checkNotifications() {
 function openNotifRun() {
   if (notifRunIdx >= 0) openEditMission(notifRunIdx);
 }
+
+renderCal();
 </script>
 </body>
 </html>
