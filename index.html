@@ -141,6 +141,8 @@ textarea.form-input{resize:vertical;min-height:64px;line-height:1.4}
   <h2 id="modal-title">Nouveau run</h2>
   <label class="form-label">Mission</label>
   <input id="f-name" class="form-input" type="text" placeholder="ex: Festival Hellfest">
+  <label class="form-label">Lieu</label>
+  <input id="f-lieu" class="form-input" type="text" placeholder="ex: Zénith de Paris">
   <label class="form-label">Employeur</label>
   <input id="f-employer" class="form-input" type="text" placeholder="ex: Live Nation">
   <label class="form-label">Régisseur</label>
@@ -150,7 +152,6 @@ textarea.form-input{resize:vertical;min-height:64px;line-height:1.4}
   <label class="form-label">Statut</label>
   <div class="status-row">
     <button class="status-btn active-encours" id="status-encours" onclick="setStatus('encours')">🟢 En cours</button>
-    <button class="status-btn" id="status-termine" onclick="setStatus('termine')">🔵 Terminé</button>
     <button class="status-btn" id="status-rembourse" onclick="setStatus('rembourse')">✅ Remboursé</button>
   </div>
   <label class="form-label">Date</label>
@@ -342,9 +343,9 @@ var notifRunIdx = -1;
 
 function setStatus(s) {
   currentStatus = s;
-  ['encours','termine','rembourse'].forEach(function(st){
+  ['encours','rembourse'].forEach(function(st){
     var btn = document.getElementById('status-'+st);
-    btn.className = 'status-btn' + (st===s ? ' active-'+st : '');
+    if(btn) btn.className = 'status-btn' + (st===s ? ' active-'+st : '');
   });
 }
 
@@ -427,12 +428,13 @@ window.renderDayMissions = function(ds) {
 function missionCardHTML(m, idx) {
   var tabBadge = m.tab==='catering' ? '<span class="badge badge-cat">Catering</span>' : '<span class="badge badge-prod">Prod</span>';
   var reg = m.regisseur ? ' · '+esc(m.regisseur) : '';
+  var lieu = m.lieu ? ' · '+esc(m.lieu) : '';
   var st = m.status||'encours';
   var stLabel = st==='encours'?'🟢 En cours':st==='termine'?'🔵 Terminé':'✅ Remboursé';
   var stBadge = '<span class="badge badge-'+st+'" style="margin-left:6px">'+stLabel+'</span>';
   return '<div class="card" onclick="openEditMission('+idx+')">'
     +'<div class="card-name">'+esc(m.name)+'</div>'
-    +'<div class="card-meta">'+esc(m.employer)+reg+'</div>'
+    +'<div class="card-meta">'+esc(m.employer)+lieu+reg+'</div>'
     +'<div>'+tabBadge+stBadge+'</div></div>';
 }
 
@@ -445,7 +447,7 @@ window.renderAllMissions = function() {
 function openNewMission() {
   editIndex = -1;
   document.getElementById('modal-title').textContent = 'Nouveau run';
-  ['f-name','f-employer','f-regisseur','f-notes','f-rib','f-facto-name-catering','f-facto-addr-catering','f-facto-name-prod','f-facto-addr-prod']
+  ['f-name','f-lieu','f-employer','f-regisseur','f-notes','f-rib','f-facto-name-catering','f-facto-addr-catering','f-facto-name-prod','f-facto-addr-prod']
     .forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('f-runner').value = 'Anthony Bellevrat';
   setStatus('encours');
@@ -468,6 +470,7 @@ function openEditMission(idx) {
   editIndex = idx; var m = window.missions[idx];
   document.getElementById('modal-title').textContent = 'Modifier le run';
   document.getElementById('f-name').value = m.name||'';
+  document.getElementById('f-lieu').value = m.lieu||'';
   document.getElementById('f-employer').value = m.employer||'';
   document.getElementById('f-regisseur').value = m.regisseur||'';
   document.getElementById('f-runner').value = m.runner||'Anthony Bellevrat';
@@ -685,6 +688,7 @@ function saveMission() {
   var expProd = getExpenses('prod');
   var missionData = {
     name:name,
+    lieu:document.getElementById('f-lieu').value.trim(),
     employer:document.getElementById('f-employer').value.trim(),
     regisseur:document.getElementById('f-regisseur').value.trim(),
     runner:document.getElementById('f-runner').value.trim(),
@@ -751,8 +755,8 @@ function deleteMission() {
 }
 
 function sharePDF() {
-  // Generate PDF as blob then share via Web Share API
   var name = document.getElementById('f-name').value || 'Run';
+  var lieu = document.getElementById('f-lieu').value || '';
   var tab = currentTab;
   var expenses = getExpenses(tab);
   var photoPromises = expenses.map(function(e) {
@@ -769,6 +773,7 @@ function sharePDF() {
     var date = document.getElementById('f-date').value||'';
     var p = date.split('-');
     var dl = p.length===3?parseInt(p[2])+'/'+parseInt(p[1])+'/'+p[0]:date;
+    var dateFile = p.length===3?p[0]+p[1]+p[2]:date.replace(/\//g,'');
     var fnName = document.getElementById('f-facto-name-'+tab).value||'';
     var fnAddr = document.getElementById('f-facto-addr-'+tab).value||'';
     var tabLabel = tab==='catering'?'Catering':'Prod';
@@ -777,14 +782,14 @@ function sharePDF() {
       s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
       s.onload = function() {
         window.jspdf = window.jspdf||window.jsPDF;
-        doSharePDF(name,employer,reg,runner,rib,dl,tab,tabLabel,fnName,fnAddr,expenses);
+        doSharePDF(name,lieu,employer,reg,runner,rib,dl,dateFile,tab,tabLabel,fnName,fnAddr,expenses);
       };
       document.head.appendChild(s);
-    } else { doSharePDF(name,employer,reg,runner,rib,dl,tab,tabLabel,fnName,fnAddr,expenses); }
+    } else { doSharePDF(name,lieu,employer,reg,runner,rib,dl,dateFile,tab,tabLabel,fnName,fnAddr,expenses); }
   });
 }
 
-function doSharePDF(name,employer,reg,runner,rib,dl,tab,tabLabel,fnName,fnAddr,expenses) {
+function doSharePDF(name,lieu,employer,reg,runner,rib,dl,dateFile,tab,tabLabel,fnName,fnAddr,expenses) {
   // Reuse doExportPDF but output as blob for sharing
   var jsPDF = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
   var doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
@@ -793,6 +798,7 @@ function doSharePDF(name,employer,reg,runner,rib,dl,tab,tabLabel,fnName,fnAddr,e
   var col=[0x53/255,0x4A/255,0xB7/255];
   doc.setFont('helvetica','bold');doc.setFontSize(20);doc.setTextColor(30,30,30);
   doc.text(name,margin,y);y+=8;
+  if(lieu){doc.setFont('helvetica','italic');doc.setFontSize(12);doc.setTextColor(80,80,80);doc.text('📍 '+lieu,margin,y);y+=6;}
   doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(100,100,100);
   if(employer){doc.text(employer+(dl?' — '+dl:''),margin,y);y+=5;}else if(dl){doc.text(dl,margin,y);y+=5;}
   if(reg){doc.text('Régisseur : '+reg,margin,y);y+=5;}
@@ -872,16 +878,22 @@ function doSharePDF(name,employer,reg,runner,rib,dl,tab,tabLabel,fnName,fnAddr,e
     });
   }
   // Share via Web Share API (works on iPhone Safari)
+  var lieuFile2 = lieu ? '_'+lieu.replace(/\s+/g,'_') : '';
+  var pdfName2 = 'Run_'+name.replace(/\s+/g,'_')+'_'+dateFile+lieuFile2+'.pdf';
   var blob = doc.output('blob');
-  var file = new File([blob], name.replace(/\s+/g,'_')+'_BetterRun.pdf', {type:'application/pdf'});
+  var file = new File([blob], pdfName2, {type:'application/pdf'});
   if (navigator.share && navigator.canShare && navigator.canShare({files:[file]})) {
     navigator.share({title: name, files: [file]}).catch(function(){
       // Fallback: download
-      doc.save(name.replace(/\s+/g,'_')+'_BetterRun.pdf');
+      var lieuFile = lieu ? '_'+lieu.replace(/\s+/g,'_') : '';
+  var pdfName = 'Run_'+name.replace(/\s+/g,'_')+'_'+dateFile+lieuFile+'.pdf';
+  doc.save(pdfName);
     });
   } else {
     // Fallback for desktop
-    doc.save(name.replace(/\s+/g,'_')+'_BetterRun.pdf');
+    var lieuFile = lieu ? '_'+lieu.replace(/\s+/g,'_') : '';
+  var pdfName = 'Run_'+name.replace(/\s+/g,'_')+'_'+dateFile+lieuFile+'.pdf';
+  doc.save(pdfName);
   }
 }
 
@@ -903,6 +915,7 @@ function urlToBase64(url) {
 
 function exportPDF() {
   var name = document.getElementById('f-name').value || 'Run';
+  var lieu = document.getElementById('f-lieu').value || '';
   var employer = document.getElementById('f-employer').value || '';
   var reg = document.getElementById('f-regisseur').value || '';
   var runner = document.getElementById('f-runner').value || '';
@@ -910,6 +923,7 @@ function exportPDF() {
   var date = document.getElementById('f-date').value || '';
   var p = date.split('-');
   var dl = p.length===3 ? parseInt(p[2])+'/'+parseInt(p[1])+'/'+p[0] : date;
+  var dateFile = p.length===3 ? p[0]+p[1]+p[2] : date.replace(/\//g,'');
   var tab = currentTab;
   var fnName = document.getElementById('f-facto-name-'+tab).value || '';
   var fnAddr = document.getElementById('f-facto-addr-'+tab).value || '';
@@ -925,13 +939,13 @@ function exportPDF() {
     if (!window.jspdf) {
       var s = document.createElement('script');
       s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-      s.onload = function() { window.jspdf = window.jspdf||window.jsPDF; doExportPDF(name,employer,reg,runner,rib,dl,tab,tabLabel,fnName,fnAddr,expenses); };
+      s.onload = function() { window.jspdf = window.jspdf||window.jsPDF; doExportPDF(name,lieu,employer,reg,runner,rib,dl,dateFile,tab,tabLabel,fnName,fnAddr,expenses); };
       document.head.appendChild(s);
-    } else { doExportPDF(name,employer,reg,runner,rib,dl,tab,tabLabel,fnName,fnAddr,expenses); }
+    } else { doExportPDF(name,lieu,employer,reg,runner,rib,dl,dateFile,tab,tabLabel,fnName,fnAddr,expenses); }
   });
 }
 
-function doExportPDF(name,employer,reg,runner,rib,dl,tab,tabLabel,fnName,fnAddr,expenses) {
+function doExportPDF(name,lieu,employer,reg,runner,rib,dl,dateFile,tab,tabLabel,fnName,fnAddr,expenses) {
   var jsPDF = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
   var doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   var W=210, margin=14, y=20;
@@ -1025,7 +1039,9 @@ function doExportPDF(name,employer,reg,runner,rib,dl,tab,tabLabel,fnName,fnAddr,
       }catch(err){doc.setFontSize(9);doc.setTextColor(150,150,150);doc.text('[Image non disponible]',margin,y+5);y+=15;}
     });
   }
-  doc.save(name.replace(/\s+/g,'_')+'_BetterRun.pdf');
+  var lieuFile = lieu ? '_'+lieu.replace(/\s+/g,'_') : '';
+  var pdfName = 'Run_'+name.replace(/\s+/g,'_')+'_'+dateFile+lieuFile+'.pdf';
+  doc.save(pdfName);
 }
 
 function openEtabModal(){renderEtabList();document.getElementById('modal-etab').style.display='flex';}
@@ -1052,7 +1068,7 @@ function checkNotifications() {
   var bar = document.getElementById('notif-bar');
   var overdue = [];
   window.missions.forEach(function(m, idx) {
-    if (m.status === 'termine') {
+    if ((m.status||'encours') === 'encours') {
       var mDate = m.date ? new Date(m.date).getTime() : 0;
       if (now - mDate > thirtyDays) {
         overdue.push({name: m.name, idx: idx});
@@ -1061,7 +1077,7 @@ function checkNotifications() {
   });
   if (overdue.length > 0) {
     notifRunIdx = overdue[0].idx;
-    bar.textContent = '⏰ ' + overdue.length + ' run(s) terminé(s) depuis plus de 30 jours sans remboursement — Appuie pour voir';
+    bar.textContent = '⏰ ' + overdue.length + ' run(s) en cours depuis plus de 30 jours sans remboursement — Appuie pour voir';
     bar.style.display = 'block';
   } else {
     bar.style.display = 'none';
