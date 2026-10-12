@@ -863,55 +863,57 @@ function doSharePDF(name,lieu,employer,reg,runner,rib,dl,dateFile,tab,tabLabel,f
     var colX=[margin, margin+photoW+10];
     var rowY=[28, 28+photoH+16];
     var perPage=4;
-    function toGray(dataUrl){
-      try{
-        var img=new Image(); img.src=dataUrl;
-        var cv=document.createElement('canvas');
-        cv.width=img.naturalWidth||600; cv.height=img.naturalHeight||800;
-        var ctx=cv.getContext('2d'); ctx.drawImage(img,0,0);
-        var id=ctx.getImageData(0,0,cv.width,cv.height); var d=id.data;
-        for(var i=0;i<d.length;i+=4){
-          var g=Math.round(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);
-          g=Math.min(255,Math.max(0,Math.round((g-128)*1.4+128)));
-          d[i]=d[i+1]=d[i+2]=g;
-        }
-        ctx.putImageData(id,0,0);
-        return cv.toDataURL('image/jpeg',0.85);
-      }catch(e){return dataUrl;}
+    function loadAndGray(dataUrl, cb){
+      var img=new Image();
+      img.onload=function(){
+        try{
+          var cv=document.createElement('canvas');
+          cv.width=img.naturalWidth; cv.height=img.naturalHeight;
+          var ctx=cv.getContext('2d'); ctx.drawImage(img,0,0);
+          var id=ctx.getImageData(0,0,cv.width,cv.height),d=id.data;
+          for(var i=0;i<d.length;i+=4){
+            var g=Math.round(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);
+            g=Math.min(255,Math.max(0,Math.round((g-128)*1.4+128)));
+            d[i]=d[i+1]=d[i+2]=g;
+          }
+          ctx.putImageData(id,0,0);
+          cb(cv.toDataURL('image/jpeg',0.85),img.naturalWidth,img.naturalHeight);
+        }catch(e){cb(dataUrl,600,800);}
+      };
+      img.onerror=function(){cb(dataUrl,600,800);};
+      img.src=dataUrl;
     }
-    photos.forEach(function(ph,pi){
-      var posInPage=pi%perPage;
-      var col2=posInPage%colCount;
-      var row2=Math.floor(posInPage/colCount);
+    function drawPhotos(pi){
+      if(pi>=photos.length){ return; }
+      var ph=photos[pi];
+      var posInPage=pi%perPage,col2=posInPage%colCount,row2=Math.floor(posInPage/colCount);
       if(posInPage===0){
         doc.addPage();
         doc.setFont('helvetica','bold');doc.setFontSize(11);
         doc.setTextColor(col[0]*255,col[1]*255,col[2]*255);
         doc.text('ANNEXES — TICKETS DE CAISSE',margin,18);
       }
-      var px=colX[col2]; var py=rowY[row2];
+      var px=colX[col2],py=rowY[row2];
       doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(60,60,60);
       doc.text('Annexe '+ph.num+' — '+(ph.etab||''),px,py-2);
       doc.setDrawColor(200,200,200);doc.setLineWidth(0.3);
       doc.rect(px,py,photoW,photoH);
       if(ph.data&&ph.data.startsWith('data:')){
-        try{
-          var gray=toGray(ph.data);
-          var tmpI=new Image(); tmpI.src=ph.data;
-          var nW=tmpI.naturalWidth||600,nH=tmpI.naturalHeight||800;
+        loadAndGray(ph.data,function(gray,nW,nH){
           var r=nW/nH,iW=photoW,iH=iW/r;
           if(iH>photoH){iH=photoH;iW=iH*r;}
           var ox=(photoW-iW)/2,oy=(photoH-iH)/2;
-          doc.addImage(gray,'JPEG',px+ox,py+oy,iW,iH,'','FAST');
-        }catch(e2){
-          doc.setFontSize(7);doc.setTextColor(150,150,150);
-          doc.text('[Image non disponible]',px+2,py+10);
-        }
+          try{doc.addImage(gray,'JPEG',px+ox,py+oy,iW,iH,'','FAST');}catch(e){}
+          drawPhotos(pi+1);
+        });
       }else{
         doc.setFontSize(7);doc.setTextColor(150,150,150);
-        doc.text('[Photo non disponible]',px+2,py+10);
+        doc.text('[Photo non disponible]',px+2,py+photoH/2);
+        drawPhotos(pi+1);
       }
-    });
+    }
+    drawPhotos(0);
+    return;
   }
   // Share via Web Share API (works on iPhone Safari)
   var lieuFile2 = lieu ? '_'+lieu.replace(/\s+/g,'_') : '';
@@ -988,6 +990,7 @@ function doExportPDF(name,lieu,employer,reg,runner,rib,dl,dateFile,tab,tabLabel,
   var col=[0x53/255,0x4A/255,0xB7/255];
   doc.setFont('helvetica','bold'); doc.setFontSize(20); doc.setTextColor(30,30,30);
   doc.text(name, margin, y); y+=8;
+  if(lieu){ doc.setFont('helvetica','italic'); doc.setFontSize(12); doc.setTextColor(80,80,80); doc.text(lieu, margin, y); y+=6; }
   doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(100,100,100);
   if(employer){doc.text(employer+(dl?' — '+dl:''),margin,y);y+=5;}
   else if(dl){doc.text(dl,margin,y);y+=5;}
@@ -1060,55 +1063,57 @@ function doExportPDF(name,lieu,employer,reg,runner,rib,dl,dateFile,tab,tabLabel,
     var colX=[margin, margin+photoW+10];
     var rowY=[28, 28+photoH+16];
     var perPage=4;
-    function toGray(dataUrl){
-      try{
-        var img=new Image(); img.src=dataUrl;
-        var cv=document.createElement('canvas');
-        cv.width=img.naturalWidth||600; cv.height=img.naturalHeight||800;
-        var ctx=cv.getContext('2d'); ctx.drawImage(img,0,0);
-        var id=ctx.getImageData(0,0,cv.width,cv.height); var d=id.data;
-        for(var i=0;i<d.length;i+=4){
-          var g=Math.round(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);
-          g=Math.min(255,Math.max(0,Math.round((g-128)*1.4+128)));
-          d[i]=d[i+1]=d[i+2]=g;
-        }
-        ctx.putImageData(id,0,0);
-        return cv.toDataURL('image/jpeg',0.85);
-      }catch(e){return dataUrl;}
+    function loadAndGray(dataUrl, cb){
+      var img=new Image();
+      img.onload=function(){
+        try{
+          var cv=document.createElement('canvas');
+          cv.width=img.naturalWidth; cv.height=img.naturalHeight;
+          var ctx=cv.getContext('2d'); ctx.drawImage(img,0,0);
+          var id=ctx.getImageData(0,0,cv.width,cv.height),d=id.data;
+          for(var i=0;i<d.length;i+=4){
+            var g=Math.round(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);
+            g=Math.min(255,Math.max(0,Math.round((g-128)*1.4+128)));
+            d[i]=d[i+1]=d[i+2]=g;
+          }
+          ctx.putImageData(id,0,0);
+          cb(cv.toDataURL('image/jpeg',0.85),img.naturalWidth,img.naturalHeight);
+        }catch(e){cb(dataUrl,600,800);}
+      };
+      img.onerror=function(){cb(dataUrl,600,800);};
+      img.src=dataUrl;
     }
-    photos.forEach(function(ph,pi){
-      var posInPage=pi%perPage;
-      var col2=posInPage%colCount;
-      var row2=Math.floor(posInPage/colCount);
+    function drawPhotos(pi){
+      if(pi>=photos.length){ return; }
+      var ph=photos[pi];
+      var posInPage=pi%perPage,col2=posInPage%colCount,row2=Math.floor(posInPage/colCount);
       if(posInPage===0){
         doc.addPage();
         doc.setFont('helvetica','bold');doc.setFontSize(11);
         doc.setTextColor(col[0]*255,col[1]*255,col[2]*255);
         doc.text('ANNEXES — TICKETS DE CAISSE',margin,18);
       }
-      var px=colX[col2]; var py=rowY[row2];
+      var px=colX[col2],py=rowY[row2];
       doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(60,60,60);
       doc.text('Annexe '+ph.num+' — '+(ph.etab||''),px,py-2);
       doc.setDrawColor(200,200,200);doc.setLineWidth(0.3);
       doc.rect(px,py,photoW,photoH);
       if(ph.data&&ph.data.startsWith('data:')){
-        try{
-          var gray=toGray(ph.data);
-          var tmpI=new Image(); tmpI.src=ph.data;
-          var nW=tmpI.naturalWidth||600,nH=tmpI.naturalHeight||800;
+        loadAndGray(ph.data,function(gray,nW,nH){
           var r=nW/nH,iW=photoW,iH=iW/r;
           if(iH>photoH){iH=photoH;iW=iH*r;}
           var ox=(photoW-iW)/2,oy=(photoH-iH)/2;
-          doc.addImage(gray,'JPEG',px+ox,py+oy,iW,iH,'','FAST');
-        }catch(e2){
-          doc.setFontSize(7);doc.setTextColor(150,150,150);
-          doc.text('[Image non disponible]',px+2,py+10);
-        }
+          try{doc.addImage(gray,'JPEG',px+ox,py+oy,iW,iH,'','FAST');}catch(e){}
+          drawPhotos(pi+1);
+        });
       }else{
         doc.setFontSize(7);doc.setTextColor(150,150,150);
-        doc.text('[Photo non disponible]',px+2,py+10);
+        doc.text('[Photo non disponible]',px+2,py+photoH/2);
+        drawPhotos(pi+1);
       }
-    });
+    }
+    drawPhotos(0);
+    return;
   }
   var lieuFile = lieu ? '_'+lieu.replace(/\s+/g,'_') : '';
   var pdfName = 'Run_'+name.replace(/\s+/g,'_')+'_'+dateFile+lieuFile+'.pdf';
