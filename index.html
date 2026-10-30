@@ -149,8 +149,16 @@ textarea.form-input{resize:vertical;min-height:64px;line-height:1.4}
   <input id="f-employer" class="form-input" type="text" placeholder="ex: Live Nation">
   <label class="form-label">Régisseur</label>
   <input id="f-regisseur" class="form-input" type="text" placeholder="ex: Jean Dupont">
-  <label class="form-label">Runner</label>
-  <input id="f-runner" class="form-input" type="text" placeholder="ex: Anthony Bellevrat">
+  <div style="display:flex;gap:10px">
+    <div style="flex:3;min-width:0">
+      <label class="form-label">Runner</label>
+      <input id="f-runner" class="form-input" type="text" placeholder="ex: Anthony Bellevrat">
+    </div>
+    <div style="flex:2;min-width:0">
+      <label class="form-label">Téléphone</label>
+      <input id="f-phone" class="form-input" type="tel" placeholder="06 00 00 00 00">
+    </div>
+  </div>
   <label class="form-label">Statut</label>
   <div class="status-row">
     <button class="status-btn active-encours" id="status-encours" onclick="setStatus('encours')">🟢 En cours</button>
@@ -239,8 +247,7 @@ textarea.form-input{resize:vertical;min-height:64px;line-height:1.4}
     <textarea id="f-rib" class="form-input" placeholder="Banque, IBAN, BIC..." style="min-height:50px"></textarea>
   </div>
   <div id="block-cheque" style="display:none">
-    <label class="form-label">Numéro de chèque</label>
-    <input id="f-cheque" class="form-input" type="text" placeholder="ex: 0012345">
+    <p style="font-size:12px;color:var(--text2);margin-top:8px">Le numéro de chèque se remplit à la main sur le PDF.</p>
   </div>
   <div class="btn-row">
     <button class="btn-cancel" onclick="closeModal()">Annuler</button>
@@ -354,6 +361,13 @@ var rowCounters = {catering:0, prod:0};
 var currentPhotoRowId = null;
 var currentPhotoTab = null;
 var notifRunIdx = -1;
+
+function lastPhone() {
+  for (var i = window.missions.length - 1; i >= 0; i--) {
+    if (window.missions[i].phone) return window.missions[i].phone;
+  }
+  return '';
+}
 
 function setMode(m) {
   currentMode = m;
@@ -470,9 +484,10 @@ window.renderAllMissions = function() {
 function openNewMission() {
   editIndex = -1;
   document.getElementById('modal-title').textContent = 'Nouveau run';
-  ['f-name','f-lieu','f-employer','f-regisseur','f-notes','f-rib','f-cheque','f-facto-name-catering','f-facto-addr-catering','f-facto-name-prod','f-facto-addr-prod']
+  ['f-name','f-lieu','f-employer','f-regisseur','f-notes','f-rib','f-phone','f-facto-name-catering','f-facto-addr-catering','f-facto-name-prod','f-facto-addr-prod']
     .forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('f-runner').value = 'Anthony Bellevrat';
+  document.getElementById('f-phone').value = lastPhone();
   setStatus('encours');
   setMode('virement');
   document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
@@ -499,7 +514,7 @@ function openEditMission(idx) {
   document.getElementById('f-regisseur').value = m.regisseur||'';
   document.getElementById('f-runner').value = m.runner||'Anthony Bellevrat';
   document.getElementById('f-rib').value = m.rib||'';
-  document.getElementById('f-cheque').value = m.cheque||'';
+  document.getElementById('f-phone').value = m.phone||lastPhone();
   document.getElementById('f-date').value = m.date||'';
   document.getElementById('f-notes').value = m.notes||'';
   document.getElementById('f-facto-name-catering').value = m.facto_name_catering||'';
@@ -719,7 +734,7 @@ function saveMission() {
     regisseur:document.getElementById('f-regisseur').value.trim(),
     runner:document.getElementById('f-runner').value.trim(),
     rib:document.getElementById('f-rib').value.trim(),
-    cheque:document.getElementById('f-cheque').value.trim(),
+    phone:document.getElementById('f-phone').value.trim(),
     mode:currentMode,
     date:date, tab:currentTab,
     facto_name_catering:fnc, facto_addr_catering:fac,
@@ -831,8 +846,6 @@ window.renderAllMissions = function() {
   list.innerHTML=window.missions.map(function(m,i){return missionCardHTML(m,i);}).join('');
 };
 
-var RUNNER_PHONE='06 14 84 26 49';
-
 function withJsPDF(cb){
   if(window.jspdf||window.jsPDF){cb();return;}
   var s=document.createElement('script');
@@ -853,7 +866,7 @@ function collectPdfData(){
     reg:document.getElementById('f-regisseur').value||'',
     runner:document.getElementById('f-runner').value||'',
     rib:document.getElementById('f-rib').value||'',
-    cheque:document.getElementById('f-cheque').value||'',
+    phone:document.getElementById('f-phone').value||'',
     mode:currentMode,
     dl:p.length===3?parseInt(p[2])+'/'+parseInt(p[1])+'/'+p[0]:date,
     dateFile:p.length===3?p[0]+p[1]+p[2]:date,
@@ -882,8 +895,8 @@ function buildPDF(d){
   if(d.employer){doc.text(d.employer+(d.dl?' \u2014 '+d.dl:''),margin,y);y+=5;}
   else if(d.dl){doc.text(d.dl,margin,y);y+=5;}
   if(d.reg){doc.text('R\u00e9gisseur : '+d.reg,margin,y);y+=5;}
-  if(d.runner){doc.text('Runner : '+d.runner+'  \u2014  '+RUNNER_PHONE,margin,y);y+=5;}
-  else{doc.text('T\u00e9l. : '+RUNNER_PHONE,margin,y);y+=5;}
+  if(d.runner){doc.text('Runner : '+d.runner+(d.phone?'  \u2014  '+d.phone:''),margin,y);y+=5;}
+  else if(d.phone){doc.text('T\u00e9l. : '+d.phone,margin,y);y+=5;}
 
   // Facturation
   if(d.fnName||d.fnAddr){
@@ -964,12 +977,8 @@ function buildPDF(d){
   var chqActive=(d.mode==='cheque');
   drawBox(22,'Mode de remboursement - ch\u00e8que',chqActive,function(by,active){
     doc.text('Num\u00e9ro de ch\u00e8que :',margin+3,by+15);
-    if(active&&d.cheque){
-      doc.setFont('helvetica','bold');doc.text(d.cheque,margin+38,by+15);
-    }else{
-      if(active){doc.setDrawColor(130,130,130);}else{doc.setDrawColor(200,200,200);}
-      doc.setLineWidth(0.3);doc.line(margin+38,by+15,W-margin-5,by+15);
-    }
+    if(active){doc.setDrawColor(130,130,130);}else{doc.setDrawColor(200,200,200);}
+    doc.setLineWidth(0.3);doc.line(margin+38,by+15,W-margin-5,by+15);
   });
 
   return {doc:doc,pdfName:pdfName};
