@@ -144,11 +144,11 @@ textarea.form-input{resize:vertical;min-height:64px;line-height:1.4}
   <label class="form-label">Mission</label>
   <input id="f-name" class="form-input" type="text" placeholder="ex: Festival Hellfest">
   <label class="form-label">Lieu</label>
-  <input id="f-lieu" class="form-input" type="text" placeholder="ex: Zénith de Paris">
+  <input id="f-lieu" list="dl-lieu" class="form-input" type="text" placeholder="ex: Zénith de Paris">
   <label class="form-label">Employeur</label>
-  <input id="f-employer" class="form-input" type="text" placeholder="ex: Live Nation">
+  <input id="f-employer" list="dl-employer" class="form-input" type="text" placeholder="ex: Live Nation">
   <label class="form-label">Régisseur</label>
-  <input id="f-regisseur" class="form-input" type="text" placeholder="ex: Jean Dupont">
+  <input id="f-regisseur" list="dl-regisseur" class="form-input" type="text" placeholder="ex: Jean Dupont">
   <div style="display:flex;gap:10px">
     <div style="flex:3;min-width:0">
       <label class="form-label">Runner</label>
@@ -174,7 +174,7 @@ textarea.form-input{resize:vertical;min-height:64px;line-height:1.4}
     <div class="facto-box">
       <label class="form-label">Facturation</label>
       <div class="ac-wrap">
-        <input id="f-facto-name-catering" class="form-input" type="text" placeholder="Nom société / personne" autocomplete="off" oninput="onFactoInput('catering')" onfocus="onFactoInput('catering')">
+        <input id="f-facto-name-catering" class="form-input" type="text" placeholder="Nom société / personne" autocomplete="off" oninput="onFactoInput('catering')" onfocus="onFactoInput('catering')" onchange="autoFillFacto('catering')">
         <div id="ac-catering" class="ac-list"></div>
       </div>
       <label class="form-label" style="margin-top:8px">Adresse de facturation</label>
@@ -206,7 +206,7 @@ textarea.form-input{resize:vertical;min-height:64px;line-height:1.4}
     <div class="facto-box">
       <label class="form-label">Facturation</label>
       <div class="ac-wrap">
-        <input id="f-facto-name-prod" class="form-input" type="text" placeholder="Nom société / personne" autocomplete="off" oninput="onFactoInput('prod')" onfocus="onFactoInput('prod')">
+        <input id="f-facto-name-prod" class="form-input" type="text" placeholder="Nom société / personne" autocomplete="off" oninput="onFactoInput('prod')" onfocus="onFactoInput('prod')" onchange="autoFillFacto('prod')">
         <div id="ac-prod" class="ac-list"></div>
       </div>
       <label class="form-label" style="margin-top:8px">Adresse de facturation</label>
@@ -289,6 +289,10 @@ textarea.form-input{resize:vertical;min-height:64px;line-height:1.4}
 </div>
 
 <input type="file" id="photo-file-input" accept="image/*" style="display:none" onchange="onPhotoSelected(event)">
+
+<datalist id="dl-employer"></datalist>
+<datalist id="dl-regisseur"></datalist>
+<datalist id="dl-lieu"></datalist>
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -482,6 +486,7 @@ window.renderAllMissions = function() {
 };
 
 function openNewMission() {
+  refreshSuggestions();
   editIndex = -1;
   document.getElementById('modal-title').textContent = 'Nouveau run';
   ['f-name','f-lieu','f-employer','f-regisseur','f-notes','f-rib','f-phone','f-facto-name-catering','f-facto-addr-catering','f-facto-name-prod','f-facto-addr-prod']
@@ -506,6 +511,7 @@ function openNewMission() {
 }
 
 function openEditMission(idx) {
+  refreshSuggestions();
   editIndex = idx; var m = window.missions[idx];
   document.getElementById('modal-title').textContent = 'Modifier le run';
   document.getElementById('f-name').value = m.name||'';
@@ -547,10 +553,65 @@ function switchTab(tab) {
   });
 }
 
+function sortFr(a, b) { return String(a).localeCompare(String(b), 'fr', {sensitivity: 'base'}); }
+
+function sortedEtabs() {
+  var l = window.etabs.slice().sort(sortFr);
+  var i = l.indexOf('Autre');
+  if (i > -1) { l.splice(i, 1); l.push('Autre'); }
+  return l;
+}
+
+function findFactoKey(v) {
+  v = (v || '').trim().toLowerCase();
+  if (!v) return null;
+  var keys = Object.keys(window.factoBook);
+  for (var i = 0; i < keys.length; i++) {
+    if (keys[i].trim().toLowerCase() === v) return keys[i];
+  }
+  return null;
+}
+
+function autoFillFacto(tab, onlyIfEmpty) {
+  var nameEl = document.getElementById('f-facto-name-' + tab);
+  var addrEl = document.getElementById('f-facto-addr-' + tab);
+  var key = findFactoKey(nameEl.value);
+  if (key) {
+    if (onlyIfEmpty && addrEl.value.trim()) return;
+    nameEl.value = key;
+    addrEl.value = window.factoBook[key] || '';
+    addrEl.setAttribute('data-auto', addrEl.value);
+  } else if (!onlyIfEmpty && addrEl.value && addrEl.value === addrEl.getAttribute('data-auto')) {
+    addrEl.value = '';
+    addrEl.removeAttribute('data-auto');
+  }
+}
+
+function refreshSuggestions() {
+  function fill(listId, field) {
+    var seen = {}, out = [];
+    window.missions.forEach(function(m) {
+      var v = (m[field] || '').trim();
+      var k = v.toLowerCase();
+      if (v && !seen[k]) { seen[k] = true; out.push(v); }
+    });
+    out.sort(sortFr);
+    var dl = document.getElementById(listId);
+    if (dl) dl.innerHTML = out.map(function(v) { return '<option value="' + esc(v) + '"></option>'; }).join('');
+  }
+  fill('dl-employer', 'employer');
+  fill('dl-regisseur', 'regisseur');
+  fill('dl-lieu', 'lieu');
+  ['catering', 'prod'].forEach(function(t) {
+    var a = document.getElementById('f-facto-addr-' + t);
+    if (a) a.removeAttribute('data-auto');
+  });
+}
+
 function onFactoInput(tab) {
   var val = document.getElementById('f-facto-name-'+tab).value.trim().toLowerCase();
   var ac = document.getElementById('ac-'+tab);
-  var keys = Object.keys(window.factoBook);
+  var keys = Object.keys(window.factoBook).sort(sortFr);
   var matches = val ? keys.filter(function(k){ return k.toLowerCase().includes(val); }) : keys;
   if (!matches.length) { ac.style.display='none'; return; }
   ac.innerHTML = matches.map(function(k){
@@ -561,7 +622,9 @@ function onFactoInput(tab) {
 
 function selectFacto(tab, name) {
   document.getElementById('f-facto-name-'+tab).value = name;
-  document.getElementById('f-facto-addr-'+tab).value = window.factoBook[name]||'';
+  var addrEl = document.getElementById('f-facto-addr-'+tab);
+  addrEl.value = window.factoBook[name]||'';
+  addrEl.setAttribute('data-auto', addrEl.value);
   document.getElementById('ac-'+tab).style.display = 'none';
 }
 
@@ -574,7 +637,7 @@ document.addEventListener('click', function(e){
 });
 
 function etabOptions(sel) {
-  return window.etabs.map(function(e){
+  return sortedEtabs().map(function(e){
     return '<option value="'+esc(e)+'"'+(e===sel?' selected':'')+'>'+esc(e)+'</option>';
   }).join('');
 }
@@ -717,6 +780,8 @@ function saveMission() {
   var date=document.getElementById('f-date').value;
   if(!name){alert('Merci de saisir un nom de mission.');return;}
   if(!date){alert('Merci de saisir une date.');return;}
+  autoFillFacto('catering', true);
+  autoFillFacto('prod', true);
   var fnc=document.getElementById('f-facto-name-catering').value.trim();
   var fac=document.getElementById('f-facto-addr-catering').value.trim();
   var fnp=document.getElementById('f-facto-name-prod').value.trim();
@@ -1011,7 +1076,7 @@ function closeEtabModal(){
   document.querySelectorAll('#rows-catering select,#rows-prod select').forEach(function(s){var c=s.value;s.innerHTML=etabOptions(c);});
 }
 function renderEtabList(){
-  document.getElementById('etab-list-ui').innerHTML=window.etabs.map(function(e,i){
+  document.getElementById('etab-list-ui').innerHTML=sortedEtabs().map(function(e,i){
     return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--border2)">'
       +'<span style="flex:1;font-size:14px">'+esc(e)+'</span>'
       +'<button onclick="removeEtab('+i+')" style="background:none;border:none;cursor:pointer;color:var(--text3)">'
@@ -1020,7 +1085,7 @@ function renderEtabList(){
   }).join('')||'<p style="color:var(--text2);font-size:14px">Aucun établissement</p>';
 }
 function addEtab(){var v=document.getElementById('etab-new-input').value.trim();if(!v)return;if(!window.etabs.includes(v))window.etabs.push(v);saveConfig();document.getElementById('etab-new-input').value='';renderEtabList();}
-function removeEtab(i){window.etabs.splice(i,1);saveConfig();renderEtabList();}
+function removeEtab(i){var nm=sortedEtabs()[i];var k=window.etabs.indexOf(nm);if(k>-1)window.etabs.splice(k,1);saveConfig();renderEtabList();}
 
 function checkNotifications() {
   if (!window.missions || !window.missions.length) return;
