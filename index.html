@@ -1020,21 +1020,8 @@ function buildPDF(d){
   doc.setTextColor(180,255,200);doc.text(fmtNum(totalHT),margin+2+colW[0],y+6);
   doc.setTextColor(210,220,255);doc.text(fmtNum(totalTVA),margin+2+colW[0]+colW[1],y+6);
   doc.setFontSize(12);doc.setTextColor(P[0],P[1],P[2]);doc.text(fmtNum(totalTTC)+' \u20ac',xTTC+2,y+6.4);
-  y+=16;
+  y+=13;
 
-  // Montant a rembourser (mis en evidence)
-  var sumH=24;
-  if(y+sumH>282){doc.addPage();y=20;}
-  doc.setFillColor(238,236,252);doc.setDrawColor(P[0],P[1],P[2]);doc.setLineWidth(1);
-  doc.roundedRect(margin,y,W-margin*2,sumH,3,3,'FD');
-  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(P[0],P[1],P[2]);
-  doc.text('MONTANT TTC \u00c0 REMBOURSER',margin+6,y+10);
-  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(110,110,130);
-  doc.text('Seul le TTC est \u00e0 rembourser. HT et TVA : pour information.',margin+6,y+17);
-  doc.setFont('helvetica','bold');doc.setFontSize(22);doc.setTextColor(30,30,30);
-  doc.text(fmtNum(totalTTC)+' \u20ac',W-margin-6,y+16,{align:'right'});
-  doc.setLineWidth(0.3);
-  y+=sumH+8;
 
   // Mode de remboursement : les deux mentions, celle non choisie est grisee
   function drawBox(h,title,active,bodyFn){
