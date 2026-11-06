@@ -980,9 +980,10 @@ function buildPDF(d){
   // Tableau des depenses : HT, TVA, TTC
   y+=2;doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(P[0],P[1],P[2]);
   doc.text('D\u00c9PENSES \u2014 '+d.tabLabel.toUpperCase(),margin,y);y+=5;
-  var colW=[66,30,30,32];
+  var colW=[66,30,30,56];
   var headers=['\u00c9tablissement','HT (\u20ac)','TVA (\u20ac)','TTC (\u20ac)'];
   doc.setFillColor(P[0],P[1],P[2]);doc.rect(margin,y,W-margin*2,7,'F');
+  doc.setFillColor(48,40,140);doc.rect(margin+colW[0]+colW[1]+colW[2],y,colW[3],7,'F');
   doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(9);
   var cx=margin+2;
   headers.forEach(function(h,i){doc.text(h,cx,y+5);cx+=colW[i];});
@@ -994,6 +995,8 @@ function buildPDF(d){
     if(y+rowH>275){doc.addPage();y=20;}
     var bg=i%2===0?[250,250,252]:[240,240,246];
     doc.setFillColor(bg[0],bg[1],bg[2]);doc.rect(margin,y,W-margin*2,rowH,'F');
+    var tint=i%2===0?[236,234,251]:[227,225,247];
+    doc.setFillColor(tint[0],tint[1],tint[2]);doc.rect(margin+colW[0]+colW[1]+colW[2],y,colW[3],rowH,'F');
     doc.setDrawColor(210,210,220);doc.setLineWidth(0.2);doc.line(margin,y+rowH,W-margin,y+rowH);
     doc.setFont('helvetica','normal');doc.setFontSize(9);
     var ht=parseFloat(e.ht)||0,tva=parseFloat(e.tva)||0,ttc=parseFloat(e.ttc)||0;
@@ -1002,19 +1005,36 @@ function buildPDF(d){
     doc.setTextColor(30,30,30);doc.text(e.etab||'',cx2,y+5);cx2+=colW[0];
     doc.setTextColor(61,184,138);doc.text(fmtNum(ht),cx2,y+5);cx2+=colW[1];
     doc.setTextColor(P[0],P[1],P[2]);doc.text(fmtNum(tva),cx2,y+5);cx2+=colW[2];
-    doc.setTextColor(30,30,30);doc.text(fmtNum(ttc),cx2,y+5);
+    doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);doc.text(fmtNum(ttc),cx2,y+5);
+    doc.setFont('helvetica','normal');
     y+=rowH;
   });
 
   // Totaux
-  if(y+8>275){doc.addPage();y=20;}
-  doc.setFillColor(P[0],P[1],P[2]);doc.rect(margin,y,W-margin*2,8,'F');
+  if(y+9>275){doc.addPage();y=20;}
+  var xTTC=margin+colW[0]+colW[1]+colW[2];
+  doc.setFillColor(P[0],P[1],P[2]);doc.rect(margin,y,W-margin*2,9,'F');
+  doc.setFillColor(255,255,255);doc.rect(xTTC,y,colW[3],9,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(255,255,255);
-  doc.text('TOTAL',margin+2,y+5.5);
-  doc.setTextColor(180,255,200);doc.text(fmtNum(totalHT),margin+2+colW[0],y+5.5);
-  doc.setTextColor(210,220,255);doc.text(fmtNum(totalTVA),margin+2+colW[0]+colW[1],y+5.5);
-  doc.setTextColor(255,255,255);doc.text(fmtNum(totalTTC),margin+2+colW[0]+colW[1]+colW[2],y+5.5);
-  y+=13;
+  doc.text('TOTAL',margin+2,y+6);
+  doc.setTextColor(180,255,200);doc.text(fmtNum(totalHT),margin+2+colW[0],y+6);
+  doc.setTextColor(210,220,255);doc.text(fmtNum(totalTVA),margin+2+colW[0]+colW[1],y+6);
+  doc.setFontSize(12);doc.setTextColor(P[0],P[1],P[2]);doc.text(fmtNum(totalTTC)+' \u20ac',xTTC+2,y+6.4);
+  y+=16;
+
+  // Montant a rembourser (mis en evidence)
+  var sumH=24;
+  if(y+sumH>282){doc.addPage();y=20;}
+  doc.setFillColor(238,236,252);doc.setDrawColor(P[0],P[1],P[2]);doc.setLineWidth(1);
+  doc.roundedRect(margin,y,W-margin*2,sumH,3,3,'FD');
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(P[0],P[1],P[2]);
+  doc.text('MONTANT TTC \u00c0 REMBOURSER',margin+6,y+10);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(110,110,130);
+  doc.text('Seul le TTC est \u00e0 rembourser. HT et TVA : pour information.',margin+6,y+17);
+  doc.setFont('helvetica','bold');doc.setFontSize(22);doc.setTextColor(30,30,30);
+  doc.text(fmtNum(totalTTC)+' \u20ac',W-margin-6,y+16,{align:'right'});
+  doc.setLineWidth(0.3);
+  y+=sumH+8;
 
   // Mode de remboursement : les deux mentions, celle non choisie est grisee
   function drawBox(h,title,active,bodyFn){
